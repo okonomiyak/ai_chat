@@ -22,11 +22,16 @@ AI_MODEL=openai/gpt-5.6-luna
 SYSTEM_PROMPT=あなたは親切なアシスタントです。
 # チャンネルごとに覚えておくメッセージ数
 MAX_HISTORY=20
+# /model で切り替えられるモデル(カンマ区切り、AI_MODEL は自動で含まれる)
+AI_MODELS=openai/gpt-5.6-luna,anthropic/claude-sonnet-5.5
+# テスト用: 指定したサーバーにだけスラッシュコマンドを登録する(即時反映)
+GUILD_ID=123456789012345678
 ```
 
 ※ systemd の `EnvironmentFile` は行末コメントに対応していないため、コメントは必ず別の行に書いてください。
 
 Discord Developer Portal で **Message Content Intent** を有効にしてください。
+スラッシュコマンドが出てこない場合は、OAuth2 の招待URLで `bot` と `applications.commands` の両方にチェックを入れてボットを招待し直してください。
 
 ```sh
 cd ai-discord-bot
@@ -37,9 +42,12 @@ cargo run --release
 
 | コマンド | 説明 |
 | --- | --- |
-| `!ai <質問>` / `@ボット <質問>` | AI に質問する |
-| `!ai reset` | そのチャンネルの会話履歴を消す |
-| `!ai model` | 使用中のモデルを表示 |
-| `!ai help` | ヘルプを表示 |
+| `/ai question:<質問> image:<画像>` | AI に質問する(画像は任意) |
+| `/reset` | そのチャンネルの会話履歴を消す |
+| `/model [name]` | 使用中のモデルを表示 / そのチャンネルのモデルを切り替え |
+| `/help` | ヘルプを表示 |
+
+従来どおり `!ai <質問>` や `@ボット <質問>` でも使えます(`!ai reset` / `!ai model [名前]` / `!ai help` も可)。
+メッセージに画像を添付すると、画像の内容も読み取って答えます。画像を読むには画像対応のモデルが必要です。
 
 会話履歴はチャンネルごとに保持され、ボットを再起動すると消えます。
