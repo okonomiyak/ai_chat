@@ -16,10 +16,15 @@ DISCORD_TOKEN=xxxxxxxx
 API_KEY=sk-or-xxxxxxxx
 
 # 以下は任意
-AI_MODEL=openai/gpt-5.6-luna      # 使用するモデル
+# 使用するモデル
+AI_MODEL=openai/gpt-5.6-luna
+# AI への指示(キャラ付けなど)
 SYSTEM_PROMPT=あなたは親切なアシスタントです。
-MAX_HISTORY=20                    # チャンネルごとに覚えておくメッセージ数
+# チャンネルごとに覚えておくメッセージ数
+MAX_HISTORY=20
 ```
+
+※ systemd の `EnvironmentFile` は行末コメントに対応していないため、コメントは必ず別の行に書いてください。
 
 Discord Developer Portal で **Message Content Intent** を有効にしてください。
 
