@@ -38,6 +38,16 @@ cd ai-discord-bot
 cargo run --release
 ```
 
+### 更新
+
+サーバー上で次を実行すると、最新のコードを取得 → ビルド → サービス再起動まで行います。
+ビルドに失敗した場合は再起動せず、動いているボットはそのまま残ります。
+
+```sh
+/root/ai_chat/update.sh          # 今のブランチを最新にする
+/root/ai_chat/update.sh main     # main ブランチに切り替える
+```
+
 ### 使い方
 
 | コマンド | 説明 |
