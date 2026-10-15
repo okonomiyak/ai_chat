@@ -14,6 +14,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+mod web;
+
 const PREFIX: &str = "!ai";
 const DISCORD_MAX_LEN: usize = 2000;
 const DEFAULT_MODEL: &str = "openai/gpt-5.6-luna";
@@ -25,7 +27,7 @@ const DEFAULT_IMAGE_PROMPT: &str = "この画像について説明してくだ�
 const HELP_TEXT: &str = "\
 **使い方**
 `/ai <質問> [画像]` または `!ai <質問>` / ボットにメンションして質問
-画像を添付して質問すると、画像の内容も読み取ります
+画像を添付したり、URLを貼って質問すると、その内容も読み取ります
 `/reset` … このチャンネルの会話履歴を消す
 `/model [モデル]` … 使用中のモデルを表示・このチャンネルのモデルを切り替え
 `/help` … このヘルプを表示";
@@ -117,6 +119,34 @@ impl Handler {
             images.push(self.fetch_image(attachment).await?);
         }
         Ok(images)
+    }
+
+    // 添付画像と、質問文中の URL の中身を集めて AI に渡す形にする
+    async fn prepare(
+        &self,
+        question: &str,
+        attachments: &[&Attachment],
+    ) -> Result<(String, Vec<String>), String> {
+        let mut images = self.fetch_images(attachments).await?;
+        let mut prompt = if question.is_empty() {
+            DEFAULT_IMAGE_PROMPT.to_string()
+        } else {
+            question.to_string()
+        };
+        for url in web::extract_urls(question) {
+            println!("URL取得: {}", url);
+            match web::fetch(&url).await {
+                Ok(web::WebContent::Image(data)) => images.push(data),
+                Ok(web::WebContent::Text(text)) => {
+                    prompt.push_str(&format!("\n\n---\n以下は {} の内容です:\n{}", url, text));
+                }
+                Err(e) => {
+                    println!("URL取得失敗 {}: {}", url, e);
+                    prompt.push_str(&format!("\n\n---\n{} は取得できませんでした: {}", url, e));
+                }
+            }
+        }
+        Ok((prompt, images))
     }
 
     async fn ask_ai(&self, model: &str, messages: &[serde_json::Value]) -> Result<String, String> {
@@ -297,12 +327,9 @@ impl Handler {
 
         println!("質問開始!:{}", question);
         let result = async {
-            let images = match &image {
-                Some(a) => self.fetch_images(&[a]).await?,
-                None => Vec::new(),
-            };
-            let prompt = if question.is_empty() { DEFAULT_IMAGE_PROMPT } else { &question };
-            self.chat(command.channel_id, prompt, &images).await
+            let attachments: Vec<&Attachment> = image.iter().collect();
+            let (prompt, images) = self.prepare(&question, &attachments).await?;
+            self.chat(command.channel_id, &prompt, &images).await
         }
         .await;
 
@@ -367,9 +394,8 @@ impl Handler {
         // 返答が来るまで「入力中...」を表示する(drop で止まる)
         let typing = msg.channel_id.start_typing(&ctx.http);
         let result = async {
-            let images = self.fetch_images(&attachments).await?;
-            let prompt = if question.is_empty() { DEFAULT_IMAGE_PROMPT } else { &question };
-            self.chat(msg.channel_id, prompt, &images).await
+            let (prompt, images) = self.prepare(&question, &attachments).await?;
+            self.chat(msg.channel_id, &prompt, &images).await
         }
         .await;
         drop(typing);
